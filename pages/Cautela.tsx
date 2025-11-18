@@ -23,6 +23,9 @@ export const CautelaPage: React.FC<CautelaPageProps> = ({ materials, personnel, 
   const [notesOut, setNotesOut] = useState('');
   const [serviceArea, setServiceArea] = useState('');
   
+  // State for category search inputs
+  const [categorySearch, setCategorySearch] = useState<Record<string, string>>({});
+
   // Helpers for selection
   const availableMaterials = materials.filter(m => m.status === MaterialStatus.AVAILABLE);
 
@@ -56,6 +59,10 @@ export const CautelaPage: React.FC<CautelaPageProps> = ({ materials, personnel, 
       updated.splice(index, 1);
       setNewItems(updated);
   };
+  
+  const handleCategorySearchChange = (category: string, value: string) => {
+      setCategorySearch(prev => ({ ...prev, [category]: value }));
+  };
 
   const handleSubmitCheckout = (e: React.FormEvent) => {
     e.preventDefault();
@@ -82,11 +89,6 @@ export const CautelaPage: React.FC<CautelaPageProps> = ({ materials, personnel, 
     // Update Materials Status
     const updatedMaterials = materials.map(m => {
         if (newItems.some(item => item.materialId === m.id)) {
-            // Don't change status for AMMO if we want to keep it "AVAILABLE" as a bulk item, 
-            // but typically we mark the specific lot/item as used or simply rely on logs.
-            // For this system, we won't block ammo from being re-selected if it's a bulk type,
-            // but here we treat items as unique instances. 
-            // Assuming Inventory items are "Lots" or "Boxes", we check them out.
             if (m.category !== MaterialCategory.AMMO) {
                  return { ...m, status: MaterialStatus.CHECKED_OUT };
             }
@@ -103,6 +105,7 @@ export const CautelaPage: React.FC<CautelaPageProps> = ({ materials, personnel, 
     setSelectedPersonnelId('');
     setPersonnelSearch('');
     setNotesOut('');
+    setCategorySearch({});
   };
 
   const handleReturn = (cautela: Cautela) => {
@@ -169,25 +172,48 @@ export const CautelaPage: React.FC<CautelaPageProps> = ({ materials, personnel, 
             {/* Item Selection Area */}
             <div className="border-t border-slate-100 dark:border-slate-700 pt-4">
                 <h4 className="font-medium text-slate-700 dark:text-slate-300 mb-3">Adicionar Materiais</h4>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
-                    {[MaterialCategory.WEAPON, MaterialCategory.VEST, MaterialCategory.RADIO, MaterialCategory.AMMO, MaterialCategory.CUFFS, MaterialCategory.MAGAZINE].map(cat => (
-                        <div key={cat}>
-                            <label className="text-xs font-semibold text-slate-500 uppercase mb-1 block">{cat}</label>
-                            <select className="w-full p-2 text-sm rounded border border-slate-200 dark:border-slate-600 bg-transparent dark:text-white"
-                                onChange={(e) => {
-                                    if(e.target.value) {
-                                        handleAddItem(cat, e.target.value);
-                                        e.target.value = ""; // reset
-                                    }
-                                }}
-                            >
-                                <option value="">+ Adicionar {cat}</option>
-                                {availableMaterials.filter(m => m.category === cat && !newItems.find(ni => ni.materialId === m.id)).map(m => (
-                                    <option key={m.id} value={m.id}>{m.model} - {m.serialNumber}</option>
-                                ))}
-                            </select>
-                        </div>
-                    ))}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                    {[MaterialCategory.WEAPON, MaterialCategory.VEST, MaterialCategory.RADIO, MaterialCategory.AMMO, MaterialCategory.CUFFS, MaterialCategory.MAGAZINE].map(cat => {
+                        const searchTerm = categorySearch[cat] || '';
+                        const filteredItems = availableMaterials.filter(m => 
+                            m.category === cat && 
+                            !newItems.find(ni => ni.materialId === m.id) &&
+                            (m.model.toLowerCase().includes(searchTerm.toLowerCase()) || m.serialNumber.toLowerCase().includes(searchTerm.toLowerCase()))
+                        );
+
+                        return (
+                            <div key={cat} className="bg-slate-50 dark:bg-slate-900/30 p-3 rounded-lg border border-slate-100 dark:border-slate-700/50">
+                                <label className="text-xs font-semibold text-slate-500 uppercase mb-1 block">{cat}</label>
+                                
+                                {/* Search Input for this category */}
+                                <div className="relative mb-2">
+                                    <Search className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400" size={12} />
+                                    <input 
+                                        type="text"
+                                        placeholder="Filtrar..."
+                                        className="w-full pl-7 p-1.5 text-xs rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 dark:text-white focus:ring-1 focus:ring-police-500 outline-none"
+                                        value={searchTerm}
+                                        onChange={(e) => handleCategorySearchChange(cat, e.target.value)}
+                                    />
+                                </div>
+
+                                <select className="w-full p-2 text-sm rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 dark:text-white"
+                                    onChange={(e) => {
+                                        if(e.target.value) {
+                                            handleAddItem(cat, e.target.value);
+                                            e.target.value = ""; // reset
+                                            handleCategorySearchChange(cat, ''); // reset search
+                                        }
+                                    }}
+                                >
+                                    <option value="">+ Adicionar {cat}</option>
+                                    {filteredItems.map(m => (
+                                        <option key={m.id} value={m.id}>{m.model} - {m.serialNumber}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        );
+                    })}
                 </div>
 
                 {/* Selected Items List */}
