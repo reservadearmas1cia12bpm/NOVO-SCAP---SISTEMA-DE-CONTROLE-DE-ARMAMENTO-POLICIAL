@@ -40,8 +40,8 @@ const App: React.FC = () => {
 
   // Helpers
   const handleThemeToggle = () => {
-      const newTheme = settings.theme === 'light' ? 'dark' : 'light';
-      const newSettings = { ...settings, theme: newTheme };
+      const newTheme: 'light' | 'dark' = settings.theme === 'light' ? 'dark' : 'light';
+      const newSettings: AppSettings = { ...settings, theme: newTheme };
       setSettings(newSettings);
       StorageService.saveSettings(newSettings);
       
