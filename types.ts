@@ -22,6 +22,7 @@ export interface Material {
   serialNumber: string; // Unique identifier
   manufacturer: string;
   condition: string; // "Novo", "Bom", "Regular"
+  caliber?: string; // New field for Weapons/Ammo
   expiryDate?: string; // For Vests
   quantity?: number; // For Ammo (Stock level)
   status: MaterialStatus;
@@ -64,10 +65,13 @@ export interface Cautela {
   area?: string; // Area of service for this specific cautela
 }
 
+export type AdminRole = 'SUPER_ADMIN' | 'ADMIN';
+
 export interface Armorer {
   id: string;
   name: string;
   matricula: string;
+  role?: AdminRole;
 }
 
 export interface SystemLog {
@@ -82,6 +86,7 @@ export interface Admin {
   id: string;
   name: string;
   matricula: string;
+  role: AdminRole;
 }
 
 export interface AppSettings {

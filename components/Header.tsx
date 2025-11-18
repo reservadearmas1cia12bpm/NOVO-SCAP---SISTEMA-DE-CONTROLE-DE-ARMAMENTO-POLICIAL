@@ -43,7 +43,12 @@ export const Header: React.FC<HeaderProps> = ({ armorer, settings, onLogout, tog
         {armorer && (
           <div className="flex items-center gap-3 pl-4 border-l border-slate-200 dark:border-slate-700">
             <div className="text-right hidden sm:block">
-              <p className="text-sm font-medium text-slate-900 dark:text-white">{armorer.name}</p>
+              <div className="flex items-center justify-end gap-2">
+                  <p className="text-sm font-medium text-slate-900 dark:text-white">{armorer.name}</p>
+                  {armorer.role === 'SUPER_ADMIN' && (
+                      <span className="text-[9px] px-1.5 py-0.5 bg-amber-100 text-amber-800 border border-amber-200 rounded-full font-bold uppercase tracking-wider">Super</span>
+                  )}
+              </div>
               <p className="text-xs text-slate-500 dark:text-slate-400">Armeiro ID: {armorer.matricula}</p>
             </div>
             <button 

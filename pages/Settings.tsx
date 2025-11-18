@@ -1,16 +1,17 @@
 import React, { useRef, useState } from 'react';
-import { AppSettings, SystemLog } from '../types';
+import { AppSettings, SystemLog, Armorer } from '../types';
 import { StorageService } from '../services/storageService';
-import { Save, Upload, Download, Database, Shield, Users, Trash2, Plus, Image as ImageIcon } from 'lucide-react';
+import { Save, Upload, Download, Database, Shield, Users, Trash2, Plus, Image as ImageIcon, Lock } from 'lucide-react';
 
 interface SettingsProps {
   settings: AppSettings;
   logs: SystemLog[];
   onSaveSettings: (s: AppSettings) => void;
-  onRestore: () => void; // Trigger page reload or state refresh
+  onRestore: () => void;
+  currentUser: Armorer | null;
 }
 
-export const SettingsPage: React.FC<SettingsProps> = ({ settings, logs, onSaveSettings, onRestore }) => {
+export const SettingsPage: React.FC<SettingsProps> = ({ settings, logs, onSaveSettings, onRestore, currentUser }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
   
@@ -59,11 +60,14 @@ export const SettingsPage: React.FC<SettingsProps> = ({ settings, logs, onSaveSe
         alert('Preencha nome e matrícula.');
         return;
     }
+    
     const newAdmin = {
         id: Date.now().toString(),
         name: newAdminName,
-        matricula: newAdminMatricula
+        matricula: newAdminMatricula,
+        role: 'ADMIN' as const // Default role for subsequent admins
     };
+    
     const updatedAdmins = [...(settings.admins || []), newAdmin];
     onSaveSettings({ ...settings, admins: updatedAdmins });
     setNewAdminName('');
@@ -71,11 +75,18 @@ export const SettingsPage: React.FC<SettingsProps> = ({ settings, logs, onSaveSe
   };
 
   const handleRemoveAdmin = (id: string) => {
+      if (id === currentUser?.id) {
+          alert("Você não pode remover a si mesmo.");
+          return;
+      }
+      
       if(confirm('Remover este administrador?')) {
           const updatedAdmins = (settings.admins || []).filter(a => a.id !== id);
           onSaveSettings({ ...settings, admins: updatedAdmins });
       }
   };
+
+  const isSuperAdmin = currentUser?.role === 'SUPER_ADMIN';
 
   return (
     <div className="p-6 space-y-8 animate-fade-in">
@@ -139,11 +150,20 @@ export const SettingsPage: React.FC<SettingsProps> = ({ settings, logs, onSaveSe
           </div>
       </div>
 
-      {/* Gestão de Administradores */}
-      <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700">
+      {/* Gestão de Administradores - RESTRICTED TO SUPER ADMIN */}
+      <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 relative overflow-hidden">
           <h3 className="text-lg font-bold mb-4 text-slate-800 dark:text-white flex items-center gap-2">
             <Users size={20} /> Gerenciar Administradores
           </h3>
+
+          {!isSuperAdmin && (
+              <div className="absolute inset-0 bg-slate-50/90 dark:bg-slate-900/90 flex flex-col items-center justify-center z-10 backdrop-blur-sm">
+                  <Lock className="text-slate-400 mb-2" size={32} />
+                  <p className="font-bold text-slate-700 dark:text-slate-300">Acesso Restrito</p>
+                  <p className="text-sm text-slate-500">Apenas o Super Administrador pode gerenciar usuários.</p>
+              </div>
+          )}
+
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               <div>
                   <h4 className="text-sm font-bold text-slate-600 dark:text-slate-300 uppercase mb-3">Novo Administrador</h4>
@@ -156,6 +176,7 @@ export const SettingsPage: React.FC<SettingsProps> = ({ settings, logs, onSaveSe
                               placeholder="Ex: Cap João Silva"
                               value={newAdminName}
                               onChange={(e) => setNewAdminName(e.target.value)}
+                              disabled={!isSuperAdmin}
                           />
                       </div>
                       <div>
@@ -166,11 +187,13 @@ export const SettingsPage: React.FC<SettingsProps> = ({ settings, logs, onSaveSe
                               placeholder="Ex: 123456-0"
                               value={newAdminMatricula}
                               onChange={(e) => setNewAdminMatricula(e.target.value)}
+                              disabled={!isSuperAdmin}
                           />
                       </div>
                       <button 
                         onClick={handleAddAdmin}
-                        className="flex items-center gap-2 bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 font-medium text-sm"
+                        disabled={!isSuperAdmin}
+                        className="flex items-center gap-2 bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 font-medium text-sm disabled:opacity-50"
                       >
                           <Plus size={16} /> Adicionar Administrador
                       </button>
@@ -186,15 +209,21 @@ export const SettingsPage: React.FC<SettingsProps> = ({ settings, logs, onSaveSe
                           {settings.admins.map(admin => (
                               <div key={admin.id} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-slate-100 dark:border-slate-700">
                                   <div>
-                                      <p className="text-sm font-bold text-slate-800 dark:text-white">{admin.name}</p>
+                                      <div className="flex items-center gap-2">
+                                          <p className="text-sm font-bold text-slate-800 dark:text-white">{admin.name}</p>
+                                          {admin.role === 'SUPER_ADMIN' && <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-bold border border-amber-200">SUPER</span>}
+                                      </div>
                                       <p className="text-xs text-slate-500">{admin.matricula}</p>
                                   </div>
-                                  <button 
-                                    onClick={() => handleRemoveAdmin(admin.id)}
-                                    className="text-red-500 hover:text-red-700 p-1 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
-                                  >
-                                      <Trash2 size={16} />
-                                  </button>
+                                  {admin.role !== 'SUPER_ADMIN' && (
+                                    <button 
+                                        onClick={() => handleRemoveAdmin(admin.id)}
+                                        disabled={!isSuperAdmin}
+                                        className="text-red-500 hover:text-red-700 p-1 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors disabled:opacity-0"
+                                    >
+                                        <Trash2 size={16} />
+                                    </button>
+                                  )}
                               </div>
                           ))}
                       </div>

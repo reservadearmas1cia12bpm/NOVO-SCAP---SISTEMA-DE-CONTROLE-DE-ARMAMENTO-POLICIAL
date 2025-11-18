@@ -95,24 +95,35 @@ const App: React.FC = () => {
       const hasAdmins = settings.admins && settings.admins.length > 0;
 
       if (!hasAdmins) {
-          // First Access: Create the first admin
+          // First Access: Create the SUPER ADMIN
           const newAdmin: Admin = {
               id: Date.now().toString(),
               name: name,
-              matricula: matricula
+              matricula: matricula,
+              role: 'SUPER_ADMIN' // Mandatory first role
           };
           const newSettings = { ...settings, admins: [newAdmin] };
           updateSettings(newSettings);
           
-          setArmorer({ id: newAdmin.id, name: newAdmin.name, matricula: newAdmin.matricula });
-          handleLog('Sistema', 'Primeiro administrador registrado e sistema inicializado.');
+          setArmorer({ 
+            id: newAdmin.id, 
+            name: newAdmin.name, 
+            matricula: newAdmin.matricula,
+            role: 'SUPER_ADMIN'
+          });
+          handleLog('Sistema', 'Super Administrador registrado e sistema inicializado.');
       } else {
           // Regular Login: Check against admins
           const adminFound = settings.admins?.find(a => a.matricula === matricula);
           
           if (adminFound) {
-              // Allow login (updating name just for display if needed, or use stored name)
-              setArmorer({ id: adminFound.id, name: adminFound.name, matricula: adminFound.matricula });
+              // Allow login
+              setArmorer({ 
+                  id: adminFound.id, 
+                  name: adminFound.name, 
+                  matricula: adminFound.matricula,
+                  role: adminFound.role || 'ADMIN' // Fallback for legacy data
+              });
               handleLog('Login', 'Administrador acessou o sistema');
           } else {
               setLoginError('Acesso negado. Matrícula não encontrada na lista de administradores.');
@@ -143,14 +154,17 @@ const App: React.FC = () => {
                               <UserPlus size={18} />
                               <span>Configuração Inicial</span>
                           </div>
-                          <p className="text-sm text-amber-600 dark:text-amber-300">Nenhum administrador encontrado. Os dados abaixo serão usados para criar o <strong>Administrador Principal</strong>.</p>
+                          <p className="text-sm text-amber-600 dark:text-amber-300">
+                              Bem-vindo! Cadastre abaixo o <strong>Super Administrador</strong>. <br/>
+                              Após este cadastro, o acesso será restrito.
+                          </p>
                       </div>
                   )}
                   
                   <form onSubmit={handleLogin} className="space-y-4 text-left">
                       <div>
                           <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                              {hasAdmins ? 'Identificação do Administrador' : 'Nome do Administrador'}
+                              {hasAdmins ? 'Identificação do Administrador' : 'Nome do Super Administrador'}
                           </label>
                           <div className="relative">
                               <UserCheck className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
@@ -170,7 +184,7 @@ const App: React.FC = () => {
                       )}
 
                       <button type="submit" className="w-full bg-police-600 hover:bg-police-700 text-white font-bold py-3 rounded-lg transition-colors mt-4 shadow-md shadow-police-600/20">
-                          {hasAdmins ? 'Acessar Sistema' : 'Registrar e Acessar'}
+                          {hasAdmins ? 'Acessar Sistema' : 'Registrar Super Admin'}
                       </button>
                   </form>
                   <p className="text-xs text-slate-400 mt-6">Sentinela v1.0 - Acesso Restrito</p>
@@ -203,7 +217,7 @@ const App: React.FC = () => {
                 {currentView === 'inventory' && <InventoryPage data={materials} onUpdate={updateMaterials} onLog={handleLog} />}
                 {currentView === 'cautela' && <CautelaPage materials={materials} personnel={personnel} cautelas={cautelas} armorer={armorer} onUpdateCautelas={updateCautelas} onUpdateMaterials={updateMaterials} onLog={handleLog} />}
                 {currentView === 'reports' && <ReportsPage materials={materials} cautelas={cautelas} personnel={personnel} />}
-                {currentView === 'settings' && <SettingsPage settings={settings} logs={logs} onSaveSettings={updateSettings} onRestore={() => window.location.reload()} />}
+                {currentView === 'settings' && <SettingsPage settings={settings} logs={logs} onSaveSettings={updateSettings} onRestore={() => window.location.reload()} currentUser={armorer} />}
             </div>
         </main>
       </div>
